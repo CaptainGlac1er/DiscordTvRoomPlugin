@@ -24,10 +24,7 @@ namespace GlacierByte.Discord.Plugin
 
         public async Task ProcessVoiceChannelChange(SocketUser user, SocketVoiceState oldChannel, SocketVoiceState newChannel)
         {
-            Console.WriteLine($"new: {newChannel} old: {oldChannel}");
-            Console.WriteLine($"new: {newChannel.VoiceChannel?.Id} old: {oldChannel.VoiceChannel?.Id}");
-
-            if (newChannel.VoiceChannel != null && oldChannel.VoiceChannel != null && newChannel.VoiceChannel.Id == oldChannel.VoiceChannel.Id)
+            if (newChannel.VoiceChannel?.Id == oldChannel.VoiceChannel?.Id)
             {
                 if (TvRooms.ContainsKey(newChannel.VoiceChannel.Id))
                 {
@@ -36,68 +33,89 @@ namespace GlacierByte.Discord.Plugin
             }
             else
             {
-                if (newChannel.VoiceChannel != null && TvRooms.ContainsKey(newChannel.VoiceChannel.Id))
+                if(newChannel.VoiceChannel != null)
                 {
-                    Console.WriteLine($"added new user: {user.Username}");
-                    await TvRooms[newChannel.VoiceChannel.Id].NewUser(user);
+                    if (TvRooms.ContainsKey(newChannel.VoiceChannel.Id))
+                    {
+                        await TvRooms[newChannel.VoiceChannel.Id].NewUser(user);
+                    } else if (TvRoomLobbies.ContainsKey(newChannel.VoiceChannel.Id))
+                    {
+                        var newTvRoom = await newChannel.VoiceChannel.Guild.CreateVoiceChannelAsync($"{user.Username} - TvRoom");
+                        TvRooms.Add(newTvRoom.Id, new TvRoom(user, newTvRoom));
+                        await (user as IGuildUser)?.ModifyAsync(x =>
+                        {
+                            x.Channel = newTvRoom;
+                        });
+                        await newTvRoom.ModifyAsync(x =>
+                        {
+                            x.Position = newChannel.VoiceChannel.Position;
+                        });
+                    }
                 }
-                if (newChannel.VoiceChannel != null && TvRoomLobbies.ContainsKey(newChannel.VoiceChannel.Id))
+                if(oldChannel.VoiceChannel != null)
                 {
-                    var newTvRoom = await newChannel.VoiceChannel.Guild.CreateVoiceChannelAsync($"{user.Username} - TvRoom");
-                    TvRooms.Add(newTvRoom.Id, new TvRoom(user, newTvRoom));
-                    Console.WriteLine($"added channel {newTvRoom.Id}");
-                    await (user as IGuildUser)?.ModifyAsync(x =>
+                    if (TvRooms.ContainsKey(oldChannel.VoiceChannel.Id))
                     {
-                        x.Channel = newTvRoom;
-                    });
-                    Console.WriteLine($"Made {newTvRoom.Name} Channel at position {newTvRoom.Position} suppose to be at {newChannel.VoiceChannel.Position}");
-                    await newTvRoom.ModifyAsync(x =>
-                    {
-                        x.Position = newChannel.VoiceChannel.Position;
-                    });
-                }
-                if (oldChannel.VoiceChannel != null && TvRooms.ContainsKey(oldChannel.VoiceChannel.Id))
-                {
-                    Console.WriteLine(oldChannel.VoiceChannel.Users.Count);
-                    if (oldChannel.VoiceChannel.Users.Count == 0)
-                    {
-                        await TvRooms[oldChannel.VoiceChannel.Id].RemoveRoom();
+                        if (oldChannel.VoiceChannel.Users.Count == 0)
+                        {
+                            await TvRooms[oldChannel.VoiceChannel.Id].RemoveRoom();
+                        }
                     }
                 }
             }
         }
         public async Task MakeTvRoomAsync(ICommandContext context)
         {
-            var voiceChannels = await context.Guild.GetVoiceChannelsAsync();
-            var channelFound = false;
-            foreach (var channel in voiceChannels)
+            using (context.Channel.EnterTypingState())
             {
-                if (channel.Name.Equals("StartTvRoom"))
+                var voiceChannels = await context.Guild.GetVoiceChannelsAsync();
+                var channelFound = false;
+                foreach (var channel in voiceChannels)
                 {
-                    TvRoomLobbies.Add(channel.Id, channel);
-                    channelFound = true;
-                    break;
-                }
-            }
-            if (!channelFound)
-            {
-                var position = 0;
-                var positions = (await context.Guild.GetChannelsAsync());
-                var highestChannel = 0;
-                foreach (var numPosition in positions)
-                {
-                    if (numPosition.Position > highestChannel)
+                    if (channel.Name.Equals("StartTvRoom"))
                     {
-                        highestChannel = numPosition.Position;
+                        TvRoomLobbies.Add(channel.Id, channel);
+                        channelFound = true;
+                        break;
                     }
                 }
-                var channel = await context.Guild.CreateVoiceChannelAsync($"StartTvRoom");
-                await channel.ModifyAsync(x =>
+                if (!channelFound)
                 {
-                    x.Position = highestChannel;
-                });
-                TvRoomLobbies.Add(channel.Id, channel);
-                Console.WriteLine($"Made {channel.Name} Channel at position {channel.Position} suppose to be at {position-1}");
+                    var positions = (await context.Guild.GetChannelsAsync());
+                    var highestChannel = 0;
+                    foreach (var numPosition in positions)
+                    {
+                        if (numPosition.Position > highestChannel)
+                        {
+                            highestChannel = numPosition.Position;
+                        }
+                    }
+                    var channel = await context.Guild.CreateVoiceChannelAsync($"StartTvRoom");
+                    await channel.ModifyAsync(x =>
+                    {
+                        x.Position = highestChannel;
+                    });
+                    TvRoomLobbies.Add(channel.Id, channel);
+                }
+            }
+        }
+        public async Task CloseTvRooms(ICommandContext context)
+        {
+            var channelVoiceChannels = await context.Guild.GetVoiceChannelsAsync();
+            using (context.Channel.EnterTypingState())
+            {
+                foreach (var room in channelVoiceChannels)
+                {
+                    if (TvRooms.ContainsKey(room.Id))
+                    {
+                        await TvRooms[room.Id].RemoveRoom();
+                        TvRooms.Remove(room.Id);
+                    } else if (TvRoomLobbies.ContainsKey(room.Id))
+                    {
+                        TvRoomLobbies.Remove(room.Id);
+                        await room.DeleteAsync();
+                    }
+                }
             }
         }
     }

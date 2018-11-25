@@ -1,8 +1,4 @@
-﻿using Discord;
-using Discord.Commands;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Discord.Commands;
 using System.Threading.Tasks;
 
 namespace GlacierByte.Discord.Plugin
@@ -18,10 +14,14 @@ namespace GlacierByte.Discord.Plugin
         [Command("init")]
         public async Task InitTvRoom()
         {
-            Console.WriteLine("making channel");
             await Service.MakeTvRoomAsync(Context);
             await Context.Message.DeleteAsync();
-            Console.WriteLine("done");
+        }
+        [Command("shutdown")]
+        public async Task ShutDownTvRooms()
+        {
+            await Service.CloseTvRooms(Context);
+            await Context.Message.DeleteAsync();
         }
     }
 }

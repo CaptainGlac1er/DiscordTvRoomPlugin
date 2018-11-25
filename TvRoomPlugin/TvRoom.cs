@@ -2,7 +2,6 @@
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace GlacierByte.Discord.Plugin
@@ -10,7 +9,7 @@ namespace GlacierByte.Discord.Plugin
     internal class TvRoom
     {
         private readonly SocketUser Owner;
-        private readonly IVoiceChannel Channel;
+        public readonly IVoiceChannel Channel;
         private readonly Dictionary<ulong, SocketUser> Waiting;
         private readonly Dictionary<ulong, SocketUser> Allowed;
         private readonly DateTime Started;
@@ -35,7 +34,7 @@ namespace GlacierByte.Discord.Plugin
                 return;
             } else if (DateTime.Now.Subtract(Started).TotalSeconds < 30)
             {
-                AllowUser(newUser);
+                await AllowUser(newUser);
             } else
             {
                 await NotAllowUser(newUser);
@@ -58,20 +57,20 @@ namespace GlacierByte.Discord.Plugin
             });
         }
 
-        private void AllowUser(SocketUser newUser)
+        private Task AllowUser(SocketUser newUser)
         {
             if (Waiting.ContainsKey(newUser.Id))
             {
                 Waiting.Remove(newUser.Id);
             }
             Allowed.TryAdd(newUser.Id, newUser);
+            return Task.CompletedTask;
         }
         public async Task UpdateUser(SocketUser socketUser)
         {
-            Console.WriteLine($"{socketUser.Username} has been updated {(socketUser as SocketGuildUser)?.IsMuted}");
             if(Waiting.ContainsKey(socketUser.Id) && !(socketUser as SocketGuildUser)?.IsMuted == true)
             {
-                AllowUser(socketUser);
+                await AllowUser(socketUser);
             } else if (Allowed.ContainsKey(socketUser.Id) && (socketUser as SocketGuildUser)?.IsMuted == true)
             {
                 await NotAllowUser(socketUser);

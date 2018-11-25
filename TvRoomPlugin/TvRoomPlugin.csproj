@@ -6,12 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="1.0.2" />
+    <PackageReference Include="Discord.Net" Version="2.0.0-beta" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="discord-bot-server-api">
       <HintPath>..\..\discord-bot-server-api\discord-bot-server-api\bin\Debug\netcoreapp2.1\discord-bot-server-api.dll</HintPath>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>System</HintPath>
     </Reference>
   </ItemGroup>
 
