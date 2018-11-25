@@ -2,6 +2,17 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RootNamespace>GlacierByte.Discord.Plugin</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Discord.Net" Version="1.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="discord-bot-server-api">
+      <HintPath>..\..\discord-bot-server-api\discord-bot-server-api\bin\Debug\netcoreapp2.1\discord-bot-server-api.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
 </Project>
